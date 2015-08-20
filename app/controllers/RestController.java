@@ -37,6 +37,25 @@ public class RestController extends BaseController {
     }
 
     /*----------------------------------------------------------------------*/
+    /**
+     * <pre>
+     * -= Create a new index =-
+     * Input:
+     * {
+     *   "fields": {
+     *     "field_name_1": {"type": "id, or string, or long", "store" (optional): true/false, "index" (optional): true/false},
+     *     "field_name_2": {"type": "id, or string, or long", "store" (optional): true/false, "index" (optional): true/false}
+     *   },
+     *   "override" (optional): true/false
+     * }
+     * Output:
+     * {"status":200/400/403/500,"message":"successful or failed message"}
+     * Note:
+     * - if "type" is not provided, default "string" type will be used.
+     * - existing fields will not be changed, unless "override" is true.
+     * </pre>
+     */
+
     /*
      * Handles POST/create/:indexName
      */
@@ -89,7 +108,9 @@ public class RestController extends BaseController {
                         + indexName + "]");
             }
             IndexSpec indexSpec = IndexSpec.newInstance(indexName, requestData);
-            IIndex index = indexApi.createIndex(indexSpec);
+            Boolean override = DPathUtils.getValue(requestData, "override", Boolean.class);
+            IIndex index = indexApi.createIndex(indexSpec,
+                    override != null ? override.booleanValue() : false);
             if (index != null) {
                 return doResponse(200, "Successful");
             } else {

@@ -15,4 +15,16 @@ public interface IIndex {
      * @return
      */
     public boolean isNew() throws IOException;
+
+    /**
+     * Updates index's spec.
+     * 
+     * @param spec
+     * @param override
+     *            existing fields will not be changed unless override is
+     *            {@code true}
+     * @return
+     * @throws IOException
+     */
+    public IIndex updateSpec(IndexSpec spec, boolean override) throws IOException;
 }

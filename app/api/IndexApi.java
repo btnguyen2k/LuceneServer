@@ -32,7 +32,8 @@ import com.google.common.cache.RemovalNotification;
  */
 public class IndexApi {
 
-    private Cache<String, IndexSpec> cacheSpec = CacheBuilder.newBuilder().build();
+    // private Cache<String, IndexSpec> cacheSpec =
+    // CacheBuilder.newBuilder().build();
     private Cache<String, AbstractIndex> cacheIndex = CacheBuilder.newBuilder()
             .expireAfterAccess(24 * 3600, TimeUnit.SECONDS) // 1 day
             .removalListener(new RemovalListener<String, AbstractIndex>() {
@@ -56,10 +57,10 @@ public class IndexApi {
      * Destroy method.
      */
     public void destroy() {
-        try {
-            cacheSpec.invalidateAll();
-        } catch (Exception e) {
-        }
+        // try {
+        // cacheSpec.invalidateAll();
+        // } catch (Exception e) {
+        // }
 
         try {
             cacheIndex.invalidateAll();
@@ -161,17 +162,17 @@ public class IndexApi {
     }
 
     /**
-     * Creates a new index.
+     * API: Creates a new index.
      * 
      * @param spec
      * @return
      * @throws IOException
      */
-    public IIndex createIndex(IndexSpec spec) throws IOException {
+    public IIndex createIndex(IndexSpec spec, boolean override) throws IOException {
         // TODO verify secret
 
         AbstractIndex index = getIndex(spec);
-        index.update(spec);
+        index.updateSpec(spec, override);
         return index;
     }
 

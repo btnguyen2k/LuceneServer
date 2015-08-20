@@ -133,8 +133,12 @@ public abstract class AbstractIndex implements IIndex {
         return this;
     }
 
-    public AbstractIndex update(IndexSpec spec) throws IOException {
-        this.spec.merge(spec);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AbstractIndex updateSpec(IndexSpec spec, boolean override) throws IOException {
+        this.spec.merge(spec, override);
         saveSpec();
         return this;
     }
