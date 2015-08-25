@@ -11,6 +11,9 @@ import lucene.IIndexFactory;
 import lucene.action.BaseAction;
 import lucene.spec.FieldSpec;
 import lucene.spec.IndexSpec;
+
+import org.apache.commons.lang3.StringUtils;
+
 import play.Logger;
 import util.IndexException;
 import util.IndexUtils;
@@ -290,6 +293,69 @@ public class IndexApi {
         IIndex index = indexFactory.openIndex(spec, actionQueue);
         if (index != null) {
             return index.truncate();
+        }
+        return false;
+    }
+
+    /*----------------------------------------------------------------------*/
+    /**
+     * <pre>
+     * -= Delete document(s) from an index =-
+     * Input:
+     * {
+     *   "secret": "authkey",
+     *   "query" : "query to match document(s) for deletion", or
+     *   "terms" : {
+     *       "field1": "value1",
+     *       "field2": value2,
+     *       ...
+     *   }
+     * }
+     * Output:
+     * {"status":200/400/403/500,"message":"successful or failed message"}
+     * Note:
+     * - only one of "query" or "terms" will be used to match documents for deletion,
+     * - if both "query" and "terms" are provided, "query" will have higher priority
+     * </pre>
+     */
+    /*----------------------------------------------------------------------*/
+    /**
+     * API: Delete documents.
+     * 
+     * @param indexName
+     * @param requestData
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    @SuppressWarnings("unchecked")
+    public boolean deleteDocuments(String indexName, Map<String, Object> requestData)
+            throws IndexException, IOException {
+        // TODO verify secret
+
+        if (!IndexUtils.isValidName(indexName)) {
+            throw new IndexException(400, "InvalidIndexNameException: Invalid index name ["
+                    + indexName + "]");
+        }
+
+        IndexSpec spec = IndexSpec.newInstance(indexName);
+        IIndex index = indexFactory.openIndex(spec, actionQueue);
+        if (index != null) {
+            String query = DPathUtils.getValue(requestData, "query", String.class);
+            if (!StringUtils.isBlank(query)) {
+                if (index.validateQuery(query)) {
+                    return index.deleteDocuments(query);
+                } else {
+                    throw new IndexException(400, "InvalidQueryException: Invalid query [" + query
+                            + "]");
+                }
+            }
+            Map<String, Object> terms = DPathUtils.getValue(requestData, "terms", Map.class);
+            if (terms != null && terms.size() > 0) {
+                return index.deleteDocuments(terms);
+            } else {
+                throw new IndexException(400, "InvalidQueryException: No query or terms supplied");
+            }
         }
         return false;
     }

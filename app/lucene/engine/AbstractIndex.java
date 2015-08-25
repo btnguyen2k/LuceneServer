@@ -31,6 +31,8 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -288,28 +290,14 @@ public abstract class AbstractIndex implements IIndex {
         return isEmpty ? null : doc;
     }
 
-    // private final static Term[] EMPTY_TERM_ARRAY = new Term[0];
-    //
-    // /**
-    // * Builds list of terms to delete a document (for updating).
-    // *
-    // * @param docData
-    // * @return
-    // * @throws IOException
-    // */
-    // protected Term[] buildTermsForDeletion(Map<String, Object> docData)
-    // throws IOException {
-    // List<Term> result = new ArrayList<Term>();
-    // for (Entry<String, Object> entry : docData.entrySet()) {
-    // String fieldName = entry.getKey().trim().toLowerCase();
-    // FieldSpec field = spec.field(fieldName);
-    // if (field != null && field.type() == FieldSpec.Type.ID) {
-    // Term term = new Term(fieldName, entry.getValue().toString());
-    // result.add(term);
-    // }
-    // }
-    // return result.toArray(EMPTY_TERM_ARRAY);
-    // }
+    protected Query parseQuery(String query) {
+        QueryParser queryParser = new QueryParser(null, getAnalyser());
+        try {
+            return queryParser.parse(query);
+        } catch (ParseException e) {
+            return null;
+        }
+    }
 
     /**
      * Builds a query to delete document(s).
@@ -477,6 +465,19 @@ public abstract class AbstractIndex implements IIndex {
      * {@inheritDoc}
      */
     @Override
+    public boolean validateQuery(String query) throws IndexException {
+        try {
+            QueryParser queryParser = new QueryParser(null, getAnalyser());
+            return queryParser.parse(query) != null;
+        } catch (ParseException e) {
+            return false;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean indexDocument(Map<String, Object> document) throws IndexException, IOException {
         IndexAction action = new IndexAction(getName());
         action.doc(document);
@@ -523,6 +524,28 @@ public abstract class AbstractIndex implements IIndex {
     @Override
     public boolean truncate() throws IndexException, IOException {
         TruncateAction action = new TruncateAction(getName());
+        IActionQueue actionQueue = getActionQueue();
+        return actionQueue != null ? actionQueue.queue(action) : performAction(action);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deleteDocuments(String query) throws IndexException, IOException {
+        DeleteAction action = new DeleteAction(getName());
+        action.deleteMethod(DeleteAction.DELETE_METHOD_QUERY).query(query);
+        IActionQueue actionQueue = getActionQueue();
+        return actionQueue != null ? actionQueue.queue(action) : performAction(action);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deleteDocuments(Map<String, Object> terms) throws IndexException, IOException {
+        DeleteAction action = new DeleteAction(getName());
+        action.deleteMethod(DeleteAction.DELETE_METHOD_TERM).term(terms);
         IActionQueue actionQueue = getActionQueue();
         return actionQueue != null ? actionQueue.queue(action) : performAction(action);
     }

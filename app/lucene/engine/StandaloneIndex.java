@@ -188,19 +188,27 @@ public class StandaloneIndex extends AbstractIndex {
         try {
             IndexWriter iw = getIndexWriter();
             switch (action.deleteMethod()) {
-            case DeleteAction.DELETE_METHOD_TERM:
+            case DeleteAction.DELETE_METHOD_TERM: {
                 Query queryForDeletion = buildQueryForDeletion(action.term());
                 if (queryForDeletion != null) {
                     iw.deleteDocuments(queryForDeletion);
                     long value = uncommitActions.incrementAndGet();
                     return true;
                 }
-            default:
-                return false;
+            }
+            default: {
+                Query queryForDeletion = parseQuery(action.query());
+                if (queryForDeletion != null) {
+                    iw.deleteDocuments(queryForDeletion);
+                    long value = uncommitActions.incrementAndGet();
+                    return true;
+                }
+            }
             }
         } finally {
             lock.unlock();
         }
+        return false;
     }
 
     /**

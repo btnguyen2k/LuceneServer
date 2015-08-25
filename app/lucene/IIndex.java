@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import lucene.action.BaseAction;
+import lucene.action.DeleteAction;
 import lucene.action.IndexAction;
 import lucene.action.TruncateAction;
 import lucene.spec.IndexSpec;
@@ -44,6 +45,15 @@ public interface IIndex {
      * @throws IndexException
      */
     public boolean validateDocument(Map<String, Object> doc) throws IndexException;
+
+    /**
+     * Validates a (search or delete) query.
+     * 
+     * @param query
+     * @return
+     * @throws IndexException
+     */
+    public boolean validateQuery(String query) throws IndexException;
 
     /**
      * Indexes a document (existing document will be overridden).
@@ -97,16 +107,50 @@ public interface IIndex {
 
     /**
      * Truncates this index.
+     * 
      * <p>
      * Implementation should build {@link TruncateAction} objects and put to
      * queue for async-execution.
      * </p>
      * 
      * @return
+     * @see #performAction(BaseAction)
      * @throws IndexException
      * @throws IOException
      */
     public boolean truncate() throws IndexException, IOException;
+
+    /**
+     * Deletes documents that match a query.
+     * 
+     * <p>
+     * Implementation should build {@link DeleteAction} objects and put to queue
+     * for async-execution.
+     * </p>
+     * 
+     * @param query
+     * @return
+     * @see #performAction(BaseAction)
+     * @throws IndexException
+     * @throws IOException
+     */
+    public boolean deleteDocuments(String query) throws IndexException, IOException;
+
+    /**
+     * Deletes documents that match fields' values.
+     * 
+     * <p>
+     * Implementation should build {@link DeleteAction} objects and put to queue
+     * for async-execution.
+     * </p>
+     * 
+     * @param terms
+     * @return
+     * @see #performAction(BaseAction)
+     * @throws IndexException
+     * @throws IOException
+     */
+    public boolean deleteDocuments(Map<String, Object> terms) throws IndexException, IOException;
 
     /**
      * Performs an index action.
