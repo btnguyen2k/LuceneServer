@@ -10,6 +10,7 @@ import java.util.concurrent.locks.Lock;
 import lucene.IActionQueue;
 import lucene.action.DeleteAction;
 import lucene.action.IndexAction;
+import lucene.action.TruncateAction;
 import lucene.spec.IndexSpec;
 
 import org.apache.lucene.document.Document;
@@ -18,7 +19,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 
 import play.Logger;
-import util.IndexException;
 
 /**
  * Base class for stand-alone (aka single-server) indices.
@@ -190,16 +190,19 @@ public class StandaloneIndex extends AbstractIndex {
 
     /**
      * {@inheritDoc}
-     * 
-     * @throws IOException
-     * @throws IndexException
      */
+    @SuppressWarnings("unused")
     @Override
-    public boolean indexDocument(Map<String, Object> document) throws IndexException, IOException {
-        IndexAction action = new IndexAction();
-        action.indexName(getName());
-        action.doc(document);
-        IActionQueue actionQueue = getActionQueue();
-        return actionQueue != null ? actionQueue.queue(action) : performAction(action);
+    protected boolean performTruncateAction(TruncateAction action) throws IOException {
+        Lock lock = getReadLock();
+        lock.lock();
+        try {
+            IndexWriter iw = getIndexWriter();
+            iw.deleteAll();
+            long value = uncommitActions.incrementAndGet();
+            return true;
+        } finally {
+            lock.unlock();
+        }
     }
 }

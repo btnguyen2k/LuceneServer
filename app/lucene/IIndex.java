@@ -6,6 +6,7 @@ import java.util.Map;
 
 import lucene.action.BaseAction;
 import lucene.action.IndexAction;
+import lucene.action.TruncateAction;
 import lucene.spec.IndexSpec;
 import util.IndexException;
 
@@ -93,6 +94,19 @@ public interface IIndex {
      * @throws IOException
      */
     public int indexDocuments(Map<String, Object>[] docs) throws IndexException, IOException;
+
+    /**
+     * Truncates this index.
+     * <p>
+     * Implementation should build {@link TruncateAction} objects and put to
+     * queue for async-execution.
+     * </p>
+     * 
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    public boolean truncate() throws IndexException, IOException;
 
     /**
      * Performs an index action.

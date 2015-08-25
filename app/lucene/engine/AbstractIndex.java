@@ -13,6 +13,7 @@ import lucene.IIndex;
 import lucene.action.BaseAction;
 import lucene.action.DeleteAction;
 import lucene.action.IndexAction;
+import lucene.action.TruncateAction;
 import lucene.spec.FieldSpec;
 import lucene.spec.IndexSpec;
 
@@ -476,6 +477,17 @@ public abstract class AbstractIndex implements IIndex {
      * {@inheritDoc}
      */
     @Override
+    public boolean indexDocument(Map<String, Object> document) throws IndexException, IOException {
+        IndexAction action = new IndexAction(getName());
+        action.doc(document);
+        IActionQueue actionQueue = getActionQueue();
+        return actionQueue != null ? actionQueue.queue(action) : performAction(action);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public int indexDocuments(Collection<Map<String, Object>> docs) throws IndexException,
             IOException {
         int count = 0;
@@ -509,15 +521,39 @@ public abstract class AbstractIndex implements IIndex {
      * {@inheritDoc}
      */
     @Override
+    public boolean truncate() throws IndexException, IOException {
+        TruncateAction action = new TruncateAction(getName());
+        IActionQueue actionQueue = getActionQueue();
+        return actionQueue != null ? actionQueue.queue(action) : performAction(action);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean performAction(BaseAction action) throws IndexException, IOException {
         if (action instanceof DeleteAction) {
             return performDeleteAction((DeleteAction) action);
+        }
+        if (action instanceof TruncateAction) {
+            return performTruncateAction((TruncateAction) action);
         }
         if (action instanceof IndexAction) {
             return performIndexAction((IndexAction) action);
         }
         return false;
     }
+
+    /**
+     * Performs an index truncation action.
+     * 
+     * @param action
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    protected abstract boolean performTruncateAction(TruncateAction action) throws IndexException,
+            IOException;
 
     /**
      * Performs a document deletion action.

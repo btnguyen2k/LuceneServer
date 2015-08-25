@@ -13,6 +13,10 @@ public class DeleteAction extends BaseAction {
     private final static String ATTR_DELETE_QUERY = "query";
     private final static String ATTR_DELETE_TERM = "term";
 
+    public DeleteAction(String indexName) {
+        super(indexName);
+    }
+
     @JsonIgnore
     public int deleteMethod() {
         Integer result = getAttribute(ATTR_DELETE_METHOD, Integer.class);

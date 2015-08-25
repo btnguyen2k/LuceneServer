@@ -34,6 +34,7 @@ public class QndDemoIndexMultiThread {
     public static void main(String args[]) throws Exception {
         Map<String, Object> requestData = new HashMap<String, Object>();
         requestData.put("override", Boolean.TRUE);
+        requestData.put("secret", "secret");
         Map<String, Object> fields = new HashMap<String, Object>();
         requestData.put("fields", fields);
         {
@@ -51,16 +52,32 @@ public class QndDemoIndexMultiThread {
             field.put("type", "string");
             fields.put("content", field);
         }
-        HttpResponse response = HttpRequest.post("http://localhost:9000/create/demo")
-                .body(SerializationUtils.toJsonString(requestData)).send();
-        System.out.println(response.bodyText());
+        {
+            HttpResponse response = HttpRequest.post("http://localhost:9000/create/demo")
+                    .body(SerializationUtils.toJsonString(requestData)).send();
+            System.out.println("CreateIndex: " + response.bodyText());
+        }
+
+        {
+            HttpResponse response = HttpRequest.post("http://localhost:9000/truncate/demo")
+                    .body(SerializationUtils.toJsonString(requestData)).send();
+            System.out.println("TruncateIndex: " + response.bodyText());
+        }
 
         long t1 = System.currentTimeMillis();
-        Path docDir = Paths.get("/Users/btnguyen/Workspace/Apps/Apache-Cassandra-2.1.8/javadoc/");
-        indexDocs(docDir);
-        // while (JOBS_DONE.get() < MAX_ITEMS) {
-        // Thread.sleep(1);
-        // }
+        {
+            Path docDir = Paths
+                    .get("/Users/btnguyen/Workspace/Apps/Apache-Cassandra-2.1.8/javadoc/");
+            indexDocs(docDir);
+        }
+        {
+            Path docDir = Paths.get("/Users/btnguyen/Workspace/Apps/ZooKeeper-3.3.6/docs/");
+            indexDocs(docDir);
+        }
+        {
+            Path docDir = Paths.get("/Users/btnguyen/Workspace/Apps/phpmyadmin/");
+            indexDocs(docDir);
+        }
         ES.shutdown();
         ES.awaitTermination(3600, TimeUnit.SECONDS);
         long t2 = System.currentTimeMillis();

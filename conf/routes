@@ -8,6 +8,7 @@ PUT         /:indexName                         controllers.RestController.creat
 POST        /create/:indexName                  controllers.RestController.createIndexPost(indexName: String)
 
 POST        /index/:indexName                   controllers.RestController.indexDocumentPost(indexName: String)
+POST        /truncate/:indexName                controllers.RestController.truncateIndexPost(indexName: String)
 
 POST        /thrift                             controllers.ThriftController.doPost()
 

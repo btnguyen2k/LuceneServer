@@ -9,6 +9,10 @@ public class IndexAction extends BaseAction {
 
     private final static String ATTR_DOC = "doc";
 
+    public IndexAction(String indexName) {
+        super(indexName);
+    }
+
     @SuppressWarnings("unchecked")
     @JsonIgnore
     public Map<String, Object> doc() {

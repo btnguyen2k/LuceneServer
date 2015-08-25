@@ -2,6 +2,7 @@ package lucene.engine;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import lucene.IActionQueue;
@@ -96,4 +97,38 @@ public abstract class AbstractIndexFactory implements IIndexFactory {
         return index;
     }
 
+    /**
+     * Opens an existing index, or {@code null} if index does not exist.
+     * 
+     * @param spec
+     * @param actionQueue
+     * @return
+     * @throws IOException
+     */
+    protected abstract AbstractIndex openIndexInternal(IndexSpec spec, IActionQueue actionQueue)
+            throws IOException;
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IIndex openIndex(final IndexSpec spec, final IActionQueue actionQueue)
+            throws IOException {
+        final String indexName = spec.name();
+        AbstractIndex index;
+        try {
+            index = cacheIndex.get(indexName, new Callable<AbstractIndex>() {
+                @Override
+                public AbstractIndex call() throws Exception {
+                    return openIndexInternal(spec, actionQueue);
+                }
+            });
+        } catch (ExecutionException e) {
+            index = null;
+        } catch (Exception e) {
+            index = null;
+            Logger.warn(e.getMessage(), e);
+        }
+        return index;
+    }
 }

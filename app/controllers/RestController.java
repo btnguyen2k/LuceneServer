@@ -96,4 +96,32 @@ public class RestController extends BaseController {
             return doResponse(500, logMsg);
         }
     }
+
+    /*----------------------------------------------------------------------*/
+
+    /*
+     * Handles POST/truncate/:indexName
+     */
+    public static Result truncateIndexPost(final String indexName) {
+        try {
+            Map<String, Object> requestData = parseRequest();
+            IndexApi indexApi = Registry.getIndexApi();
+            try {
+                if (indexApi.truncateIndex(indexName, requestData)) {
+                    return doResponse(200, "Index [" + indexName
+                            + "] has been scheduled for truncating");
+                } else {
+                    return doResponse(200, "Index [" + indexName
+                            + "] has not been scheduled for truncating, maybe it doesnot exist?");
+                }
+            } catch (IndexException e) {
+                Logger.error(e.getMessage(), e);
+                return doResponse(e.getStatus(), e.getMessage());
+            }
+        } catch (Exception e) {
+            final String logMsg = "Exception [" + e.getClass() + "]: " + e.getMessage();
+            Logger.error(logMsg, e);
+            return doResponse(500, logMsg);
+        }
+    }
 }

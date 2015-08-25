@@ -11,6 +11,17 @@ import lucene.spec.IndexSpec;
  * @since 0.1.0
  */
 public interface IIndexFactory {
+
+    /**
+     * Opens an existing index, or {@code null} if index does not exist.
+     * 
+     * @param spec
+     * @param actionQueue
+     * @return
+     * @throws IOException
+     */
+    public IIndex openIndex(IndexSpec spec, IActionQueue actionQueue) throws IOException;
+
     /**
      * Creates an {@link IIndex}.
      * 

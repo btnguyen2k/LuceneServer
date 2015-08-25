@@ -18,7 +18,7 @@ import util.IndexUtils;
 import com.github.ddth.commons.utils.DPathUtils;
 
 /**
- * Engine to generate IDs.
+ * High level index APIs.
  * 
  * @author ThanhNB
  * @since 0.1.0
@@ -118,6 +118,7 @@ public class IndexApi {
      * -= Create a new index =-
      * Input:
      * {
+     *   "secret": "authkey",
      *   "fields": {
      *     "field_name_1": {"type": "id, or string, or long", "store" (optional): true/false, "index" (optional): true/false},
      *     "field_name_2": {"type": "id, or string, or long", "store" (optional): true/false, "index" (optional): true/false}
@@ -135,7 +136,7 @@ public class IndexApi {
     /**
      * API: Creates a new index.
      * 
-     * @param _indexName
+     * @param indexName
      * @param requestData
      * @return
      * @throws IndexException
@@ -191,6 +192,7 @@ public class IndexApi {
      * -= Index a document =-
      * Input:
      * {
+     *   "secret": "authkey",
      *   "docs": [
      *     {
      *       "field_name_1": (string field) "value for this field",
@@ -215,7 +217,7 @@ public class IndexApi {
     /**
      * API: Indexes document(s).
      * 
-     * @param _indexName
+     * @param indexName
      * @param requestData
      * @return number of documents have been scheduled for indexing
      * @throws IndexException
@@ -224,6 +226,8 @@ public class IndexApi {
     @SuppressWarnings("unchecked")
     public int indexDocuments(String indexName, Map<String, Object> requestData)
             throws IndexException, IOException {
+        // TODO verify secret
+
         if (!IndexUtils.isValidName(indexName)) {
             throw new IndexException(400, "InvalidIndexNameException: Invalid index name ["
                     + indexName + "]");
@@ -249,5 +253,44 @@ public class IndexApi {
         }
 
         return index.indexDocuments(docs);
+    }
+
+    /*----------------------------------------------------------------------*/
+    /**
+     * <pre>
+     * -= Truncate an index =-
+     * Input:
+     * {
+     *   "secret": "authkey"
+     * }
+     * Output:
+     * {"status":200/400/403/500,"message":"successful or failed message"}
+     * </pre>
+     */
+    /*----------------------------------------------------------------------*/
+    /**
+     * API: Truncates an index.
+     * 
+     * @param indexName
+     * @param requestData
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    public boolean truncateIndex(String indexName, Map<String, Object> requestData)
+            throws IndexException, IOException {
+        // TODO verify secret
+
+        if (!IndexUtils.isValidName(indexName)) {
+            throw new IndexException(400, "InvalidIndexNameException: Invalid index name ["
+                    + indexName + "]");
+        }
+
+        IndexSpec spec = IndexSpec.newInstance(indexName);
+        IIndex index = indexFactory.openIndex(spec, actionQueue);
+        if (index != null) {
+            return index.truncate();
+        }
+        return false;
     }
 }
