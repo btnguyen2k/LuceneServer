@@ -1,21 +1,44 @@
 package lucene.engine;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import lucene.IActionQueue;
 import lucene.IIndex;
-import lucene.IndexSpec;
+import lucene.action.BaseAction;
+import lucene.action.DeleteAction;
+import lucene.action.IndexAction;
+import lucene.spec.FieldSpec;
+import lucene.spec.IndexSpec;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleField;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.LongField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 
 import play.Logger;
+import util.IndexException;
 
 /**
  * Abstract implementation of {@link IIndex}.
@@ -25,32 +48,18 @@ import play.Logger;
  */
 public abstract class AbstractIndex implements IIndex {
 
-    private String name;
     private Directory directory;
     private IndexSpec spec;
+    private IActionQueue actionQueue;
 
-    public AbstractIndex(String name) {
-        this.name = name;
-    }
-
-    public AbstractIndex(String name, Directory directory) {
-        this.name = name;
-        this.directory = directory;
-    }
-
-    public AbstractIndex(String name, Directory directory, IndexSpec spec) {
-        this.name = name;
+    public AbstractIndex(Directory directory, IndexSpec spec, IActionQueue actionQueue) {
         this.directory = directory;
         this.spec = spec;
+        this.actionQueue = actionQueue;
     }
 
     protected String getName() {
-        return name;
-    }
-
-    public AbstractIndex setName(String name) {
-        this.name = name;
-        return this;
+        return spec.name();
     }
 
     protected Directory getDirectory() {
@@ -71,49 +80,257 @@ public abstract class AbstractIndex implements IIndex {
         return this;
     }
 
+    protected IActionQueue getActionQueue() {
+        return actionQueue;
+    }
+
+    public AbstractIndex setActionQueue(IActionQueue actionQueue) {
+        this.actionQueue = actionQueue;
+        return this;
+    }
+
     /*----------------------------------------------------------------------*/
 
-    private IndexWriter indexWriter;
+    private ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    protected Lock getReadLock() {
+        return lock.readLock();
+    }
+
+    protected Lock getWriteLock() {
+        return lock.writeLock();
+    }
 
     private IndexReader indexReader;
+
+    /**
+     * Creates {@link IndexReader} instance for this index.
+     * 
+     * <p>
+     * Sub-class may override this method to implement its own business rule.
+     * </p>
+     * 
+     * @return
+     * @throws IOException
+     */
+    protected IndexReader openIndexReader() throws IOException {
+        return DirectoryReader.open(getDirectory());
+    }
+
+    /**
+     * Gets {@link IndexReader} for this index.
+     * 
+     * @return
+     * @throws IOException
+     */
+    synchronized protected IndexReader getIndexReader() throws IOException {
+        if (indexReader == null) {
+            indexReader = openIndexReader();
+        }
+        return indexReader;
+    }
+
     private IndexSearcher indexSearcher;
 
     /**
-     * Opens a the index-writer for this index.
+     * Creates {@link IndexSearcher} instance for this index.
      * 
-     * @param spec
-     * @param directory
+     * <p>
+     * Sub-class may override this method to implement its own business rule.
+     * </p>
+     * 
      * @return
      * @throws IOException
      */
-    protected IndexWriter openIndexWriter(IndexSpec spec, Directory directory) throws IOException {
-        Analyzer analyzer = new StandardAnalyzer();
+    protected IndexSearcher openIndexSearcher() throws IOException {
+        return new IndexSearcher(getIndexReader());
+    }
+
+    /**
+     * Gets {@link IndexSearcher} for this index.
+     * 
+     * @return
+     * @throws IOException
+     */
+    synchronized protected IndexSearcher getIndexSearcher() throws IOException {
+        if (indexSearcher == null) {
+            indexSearcher = openIndexSearcher();
+        }
+        return indexSearcher;
+    }
+
+    private IndexWriter indexWriter;
+
+    /**
+     * Creates {@link IndexWriter} instance for this index.
+     * 
+     * <p>
+     * Sub-class may override this method to implement its own business rule.
+     * </p>
+     * 
+     * @return
+     * @throws IOException
+     */
+    protected IndexWriter openIndexWriter() throws IOException {
+        IndexWriterConfig iwc = getIndexWriterConfig();
+        IndexWriter iw = new IndexWriter(getDirectory(), iwc);
+        return iw;
+    }
+
+    /**
+     * Gets {@link IndexWriter} for this index.
+     * 
+     * @return
+     * @throws IOException
+     */
+    synchronized protected IndexWriter getIndexWriter() throws IOException {
+        if (indexWriter == null) {
+            indexWriter = openIndexWriter();
+        }
+        return indexWriter;
+    }
+
+    protected Analyzer getAnalyser() {
+        return new StandardAnalyzer();
+    }
+
+    protected IndexWriterConfig getIndexWriterConfig() {
+        Analyzer analyzer = getAnalyser();
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+        iwc.setUseCompoundFile(true);
+        iwc.setCommitOnClose(true);
         iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-        return new IndexWriter(directory, iwc);
+        return iwc;
     }
 
     /**
-     * Opens the index-reader for this index.
+     * Creates a new field according to value.
      * 
-     * @param spec
-     * @param directory
+     * @param fieldName
+     * @param fieldValue
      * @return
      * @throws IOException
      */
-    protected IndexReader openIndexReader(IndexSpec spec, Directory directory) throws IOException {
-        return DirectoryReader.open(directory);
+    protected FieldSpec createField(String fieldName, Object fieldValue) throws IOException {
+        FieldSpec field;
+        if (fieldValue instanceof Number) {
+            if (fieldValue instanceof Double || fieldValue instanceof Float) {
+                field = FieldSpec.newInstance(fieldName, FieldSpec.Type.DOUBLE);
+            } else {
+                field = FieldSpec.newInstance(fieldName, FieldSpec.Type.LONG);
+            }
+        } else {
+            field = FieldSpec.newInstance(fieldName, FieldSpec.Type.STRING);
+        }
+        IndexSpec spec = getSpec();
+        spec.field(fieldName, field);
+        updateSpec(spec, false);
+        return field;
     }
 
     /**
-     * Opens the index-searcher for this index.
+     * Builds a new Lucene field.
      * 
-     * @param spec
-     * @param indexReader
+     * @param fieldName
+     * @param fieldValue
      * @return
+     * @throws IOException
      */
-    protected IndexSearcher openIndexSearcher(IndexSpec spec, IndexReader indexReader) {
-        return new IndexSearcher(indexReader);
+    protected Field buildField(String fieldName, Object fieldValue) throws IOException {
+        if (fieldName == null || fieldValue == null) {
+            return null;
+        }
+        FieldSpec field = getSpec().field(fieldName);
+        if (field == null) {
+            field = createField(fieldName, fieldValue);
+        }
+        switch (field.type()) {
+        case ID:
+            return new StringField(field.name(), fieldValue.toString(),
+                    field.isStored() ? Field.Store.YES : Field.Store.NO);
+        case STRING:
+            return new TextField(field.name(), fieldValue.toString(),
+                    field.isStored() ? Field.Store.YES : Field.Store.NO);
+        case LONG:
+            if (fieldValue instanceof Number) {
+                Number numValue = (Number) fieldValue;
+                return new LongField(field.name(), numValue.longValue(),
+                        field.isStored() ? Field.Store.YES : Field.Store.NO);
+            }
+        case DOUBLE:
+            if (fieldValue instanceof Number) {
+                Number numValue = (Number) fieldValue;
+                return new DoubleField(field.name(), numValue.doubleValue(),
+                        field.isStored() ? Field.Store.YES : Field.Store.NO);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Builds a document for indexing.
+     * 
+     * @param docData
+     * @return
+     * @throws IOException
+     */
+    protected Document buildDocument(Map<String, Object> docData) throws IOException {
+        Document doc = new Document();
+        boolean isEmpty = true;
+        for (Entry<String, Object> entry : docData.entrySet()) {
+            Field field = buildField(entry.getKey(), entry.getValue());
+            if (field != null) {
+                doc.add(field);
+                isEmpty = false;
+            }
+        }
+        return isEmpty ? null : doc;
+    }
+
+    // private final static Term[] EMPTY_TERM_ARRAY = new Term[0];
+    //
+    // /**
+    // * Builds list of terms to delete a document (for updating).
+    // *
+    // * @param docData
+    // * @return
+    // * @throws IOException
+    // */
+    // protected Term[] buildTermsForDeletion(Map<String, Object> docData)
+    // throws IOException {
+    // List<Term> result = new ArrayList<Term>();
+    // for (Entry<String, Object> entry : docData.entrySet()) {
+    // String fieldName = entry.getKey().trim().toLowerCase();
+    // FieldSpec field = spec.field(fieldName);
+    // if (field != null && field.type() == FieldSpec.Type.ID) {
+    // Term term = new Term(fieldName, entry.getValue().toString());
+    // result.add(term);
+    // }
+    // }
+    // return result.toArray(EMPTY_TERM_ARRAY);
+    // }
+
+    /**
+     * Builds a query to delete document(s).
+     * 
+     * @param docData
+     * @return
+     * @throws IOException
+     */
+    protected Query buildQueryForDeletion(Map<String, Object> docData) throws IOException {
+        BooleanQuery result = new BooleanQuery();
+        boolean isEmpty = true;
+        for (Entry<String, Object> entry : docData.entrySet()) {
+            String fieldName = entry.getKey().trim().toLowerCase();
+            FieldSpec field = spec.field(fieldName);
+            if (field != null && field.type() == FieldSpec.Type.ID) {
+                Term term = new Term(fieldName, entry.getValue().toString());
+                TermQuery termQuery = new TermQuery(term);
+                result.add(termQuery, Occur.MUST);
+                isEmpty = false;
+            }
+        }
+        return isEmpty ? null : result;
     }
 
     /**
@@ -125,21 +342,11 @@ public abstract class AbstractIndex implements IIndex {
     public AbstractIndex init() throws IOException {
         IndexSpec existingSpec = IndexSpec.loadSpec(directory);
         if (existingSpec == null) {
-            existingSpec = IndexSpec.newInstance(name);
+            existingSpec = IndexSpec.newInstance(spec.name());
         }
         spec = existingSpec.merge(spec);
         saveSpec();
 
-        return this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public AbstractIndex updateSpec(IndexSpec spec, boolean override) throws IOException {
-        this.spec.merge(spec, override);
-        saveSpec();
         return this;
     }
 
@@ -228,4 +435,109 @@ public abstract class AbstractIndex implements IIndex {
     public boolean isNew() throws IOException {
         return DirectoryReader.indexExists(directory);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AbstractIndex updateSpec(IndexSpec spec, boolean override) throws IOException {
+        this.spec.merge(spec, override);
+        saveSpec();
+        return this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean validateDocument(Map<String, Object> doc) throws IndexException {
+        if (spec == null) {
+            throw new IndexException(500, "Null/Invalid index's metadata");
+        }
+        if (doc == null || doc.size() == 0) {
+            throw new IndexException(400, "Empty document");
+        }
+        for (Entry<String, Object> fieldData : doc.entrySet()) {
+            String fieldName = fieldData.getKey().trim().toLowerCase();
+            Object fieldValue = fieldData.getValue();
+            FieldSpec field = spec.field(fieldName);
+            if (field == null) {
+                continue;
+            } else if (field.validateValue(fieldValue)) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int indexDocuments(Collection<Map<String, Object>> docs) throws IndexException,
+            IOException {
+        int count = 0;
+        for (Map<String, Object> doc : docs) {
+            if (!indexDocument(doc)) {
+                return count;
+            } else {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int indexDocuments(Map<String, Object>[] docs) throws IndexException, IOException {
+        int count = 0;
+        for (Map<String, Object> doc : docs) {
+            if (!indexDocument(doc)) {
+                return count;
+            } else {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean performAction(BaseAction action) throws IndexException, IOException {
+        if (action instanceof DeleteAction) {
+            return performDeleteAction((DeleteAction) action);
+        }
+        if (action instanceof IndexAction) {
+            return performIndexAction((IndexAction) action);
+        }
+        return false;
+    }
+
+    /**
+     * Performs a document deletion action.
+     * 
+     * @param action
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    protected abstract boolean performDeleteAction(DeleteAction action) throws IndexException,
+            IOException;
+
+    /**
+     * Performs a document indexing action.
+     * 
+     * @param action
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    protected abstract boolean performIndexAction(IndexAction action) throws IndexException,
+            IOException;
 }

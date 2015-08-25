@@ -1,8 +1,8 @@
-package lucene;
+package lucene.spec;
 
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
+import util.IndexUtils;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.github.ddth.commons.utils.DPathUtils;
@@ -17,7 +17,7 @@ import com.github.ddth.dao.BaseBo;
 public class FieldSpec extends BaseBo {
 
     public enum Type {
-        ID("id"), STRING("string"), LONG("long");
+        ID("id"), STRING("string"), LONG("long"), DOUBLE("double");
 
         private String value;
 
@@ -48,7 +48,7 @@ public class FieldSpec extends BaseBo {
     }
 
     public static FieldSpec newInstance(String name, FieldSpec.Type type) {
-        if (StringUtils.isBlank(name)) {
+        if (!IndexUtils.isValidName(name)) {
             return null;
         }
         if (type == null) {
@@ -90,14 +90,14 @@ public class FieldSpec extends BaseBo {
     }
 
     public FieldSpec name(String name) {
-        this.name = name.trim().toLowerCase();
+        this.name = IndexUtils.normalizeName(name);
         return this;
     }
 
     @JsonIgnore
     public FieldSpec.Type type() {
         String typeStr = getAttribute(FIELD_TYPE, String.class);
-        return typeStr != null ? FieldSpec.Type.valueOf(typeStr) : null;
+        return typeStr != null ? FieldSpec.Type.valueOf(typeStr.toUpperCase()) : null;
     }
 
     public FieldSpec type(FieldSpec.Type type) {
@@ -125,5 +125,22 @@ public class FieldSpec extends BaseBo {
     public FieldSpec markIndexed(boolean value) {
         setAttribute(FIELD_IS_INDEXED, value);
         return this;
+    }
+
+    public boolean validateValue(Object value) {
+        if (value == null) {
+            return false;
+        }
+        FieldSpec.Type type = type();
+        switch (type) {
+        case ID:
+            return true;
+        case STRING:
+            return true;
+        case LONG:
+            return value instanceof Number;
+        default:
+            return false;
+        }
     }
 }

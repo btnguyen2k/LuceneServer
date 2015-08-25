@@ -16,6 +16,8 @@ public class Registry {
 
     synchronized public static void init() {
         initApplicationContext();
+
+        indexApi = getIndexApi();
     }
 
     synchronized public static void destroy() {
@@ -27,7 +29,7 @@ public class Registry {
 
     public static IndexApi getIndexApi() {
         if (indexApi == null) {
-            indexApi = new IndexApi();
+            indexApi = getBean(IndexApi.class);
         }
         return indexApi;
     }

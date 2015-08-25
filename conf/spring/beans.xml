@@ -7,7 +7,39 @@
                            http://www.springframework.org/schema/context 
                            http://www.springframework.org/schema/context/spring-context.xsd
                            http://www.springframework.org/schema/util 
-                           http://www.springframework.org/schema/util/spring-util.xsd">
+                           http://www.springframework.org/schema/util/spring-util.xsd"
+	default-lazy-init="false">
+
+	<bean id="INDEX_API" class="api.IndexApi" scope="singleton"
+		init-method="init" destroy-method="destroy">
+		<property name="indexFactory">
+			<bean class="lucene.engine.StandaloneIndexFactory" init-method="init"
+				destroy-method="destroy">
+				<property name="directoryFactory">
+					<!--
+					 * StandaloneIndexFactory supports all 3 types of directory:
+					 * - FSDirectory: index data is stored in a directory on disk
+					 * - RedisDirectory: index data is stored in Redis server
+					 * - CassandraDirectory: index data is stored in Cassandra cluster
+					 -->
+					<bean class="lucene.engine.FsDirectoryFactory" init-method="init"
+						destroy-method="destroy">
+						<property name="rootStoragePath" value="./data" />
+					</bean>
+				</property>
+			</bean>
+		</property>
+
+		<property name="actionQueue">
+		    <!-- 
+		     * Queue to buffer index's actions for async-executions.
+		     -->
+			<bean class="lucene.action.InMemoryActionQueue" init-method="init"
+				destroy-method="destroy">
+				<property name="maxItems" value="1024" />
+			</bean>
+		</property>
+	</bean>
 
 	<!-- beans for development env -->
 	<beans>

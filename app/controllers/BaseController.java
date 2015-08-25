@@ -1,13 +1,14 @@
 package controllers;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import play.Logger;
 import play.api.templates.Html;
 import play.i18n.Lang;
 import play.mvc.Controller;
@@ -45,9 +46,10 @@ public class BaseController extends Controller {
      * Extracts raw text content from request.
      * 
      * @return
+     * @throws IOException
      * @throws UnsupportedEncodingException
      */
-    protected static String extractRequestContent() {
+    protected static String extractRequestContent() throws IOException {
         // obtain request body
         RequestBody requestBody = request().body();
         String requestContent = null;
@@ -57,16 +59,21 @@ public class BaseController extends Controller {
         } else {
             RawBuffer rawBuffer = requestBody.asRaw();
             if (rawBuffer != null) {
-                requestContent = new String(rawBuffer.asBytes(), Constants.UTF8);
+                byte[] buffer = rawBuffer.asBytes();
+                if (buffer == null) {
+                    buffer = FileUtils.readFileToByteArray(rawBuffer.asFile());
+                }
+                requestContent = new String(buffer, Constants.UTF8);
             } else {
                 requestContent = requestBody.asText();
             }
         }
-        String clientIp = getClientIp();
-        String method = request().method();
-        String uri = request().uri();
-        Logger.info("[" + method + "] request [" + uri + "] from [" + clientIp + "]: "
-                + requestContent);
+        // String clientIp = getClientIp();
+        // String method = request().method();
+        // String uri = request().uri();
+        // Logger.info("[" + method + "] request [" + uri + "] from [" +
+        // clientIp + "]: "
+        // + requestContent);
         return requestContent;
     }
 
@@ -74,9 +81,10 @@ public class BaseController extends Controller {
      * Parses request into a Map.
      * 
      * @return
+     * @throws IOException
      */
     @SuppressWarnings("unchecked")
-    protected static Map<String, Object> parseRequest() {
+    protected static Map<String, Object> parseRequest() throws IOException {
         String requestContent = extractRequestContent();
         return SerializationUtils.fromJsonString(requestContent, Map.class);
     }

@@ -25,6 +25,7 @@ object ApplicationBuild extends Build {
         "org.springframework"        %  "spring-expression"       % _springVersion,
         "org.apache.commons"         %  "commons-dbcp2"           % "2.1.1",
         
+        "com.github.ddth"            %  "ddth-queue"              % "0.3.1",
         "com.github.ddth"            %  "cassdir"                 % "0.1.1",
         "com.github.ddth"            %  "redir"                   % "0.1.1",
         "org.apache.lucene"          %  "lucene-core"             % _luceneVersion,
@@ -33,6 +34,7 @@ object ApplicationBuild extends Build {
         "org.apache.lucene"          %  "lucene-queryparser"      % _luceneVersion,
         
         "com.github.ddth"            %  "ddth-thriftpool"         % "0.2.1.3" % "test",
+        "org.jodd"                   %  "jodd-http"               % "3.6.6" % "test",
         
         "com.github.ddth"            %% "play-module-plommon"     % "0.5.1.5",
 

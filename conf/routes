@@ -7,7 +7,7 @@
 PUT         /:indexName                         controllers.RestController.createIndexPut(indexName: String)
 POST        /create/:indexName                  controllers.RestController.createIndexPost(indexName: String)
 
-#PUT         /es/:indexName                      controllers.EsController.createIndex(indexName: String)
+POST        /index/:indexName                   controllers.RestController.indexDocumentPost(indexName: String)
 
 POST        /thrift                             controllers.ThriftController.doPost()
 

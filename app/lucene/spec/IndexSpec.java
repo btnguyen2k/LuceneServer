@@ -1,4 +1,4 @@
-package lucene;
+package lucene.spec;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -12,6 +12,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+
+import util.IndexUtils;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.github.ddth.commons.utils.DPathUtils;
@@ -128,7 +130,7 @@ public class IndexSpec extends BaseBo {
     }
 
     public IndexSpec name(String name) {
-        setAttribute(ATTR_NAME, name);
+        setAttribute(ATTR_NAME, IndexUtils.normalizeName(name));
         return this;
     }
 
