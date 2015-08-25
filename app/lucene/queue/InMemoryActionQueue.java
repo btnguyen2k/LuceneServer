@@ -1,4 +1,4 @@
-package lucene.action;
+package lucene.queue;
 
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
@@ -6,6 +6,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import lucene.IActionQueue;
+import lucene.action.BaseAction;
 
 import com.github.ddth.queue.IQueueMessage;
 
