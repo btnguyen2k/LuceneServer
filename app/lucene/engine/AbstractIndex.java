@@ -18,7 +18,7 @@ import lucene.spec.FieldSpec;
 import lucene.spec.IndexSpec;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
@@ -192,7 +192,7 @@ public abstract class AbstractIndex implements IIndex {
     }
 
     protected Analyzer getAnalyser() {
-        return new StandardAnalyzer();
+        return new SimpleAnalyzer();
     }
 
     protected IndexWriterConfig getIndexWriterConfig() {
@@ -327,7 +327,7 @@ public abstract class AbstractIndex implements IIndex {
             if (field != null && field.type() == FieldSpec.Type.ID) {
                 Term term = new Term(fieldName, entry.getValue().toString());
                 TermQuery termQuery = new TermQuery(term);
-                result.add(termQuery, Occur.MUST);
+                result.add(termQuery, Occur.FILTER);
                 isEmpty = false;
             }
         }

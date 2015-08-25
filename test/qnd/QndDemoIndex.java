@@ -10,8 +10,10 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import jodd.http.HttpRequest;
@@ -23,9 +25,10 @@ import com.github.ddth.commons.utils.SerializationUtils;
 
 public class QndDemoIndex {
 
-    static final long MAX_ITEMS = 1000;
+    static final long MAX_ITEMS = 10000;
     static final AtomicLong COUNTER = new AtomicLong(0);
     static final AtomicLong JOBS_DONE = new AtomicLong(0);
+    static final Set<String> ITEMS = new HashSet<String>();
 
     public static void main(String[] args) throws Exception {
         Map<String, Object> requestData = new HashMap<String, Object>();
@@ -52,9 +55,21 @@ public class QndDemoIndex {
         System.out.println(response.bodyText());
 
         long t1 = System.currentTimeMillis();
-        Path docDir = Paths.get("/Users/btnguyen/Workspace/Apps/Apache-Cassandra-2.1.8/javadoc/");
-        indexDocs(docDir);
+        {
+            Path docDir = Paths
+                    .get("/Users/btnguyen/Workspace/Apps/Apache-Cassandra-2.1.8/javadoc/");
+            indexDocs(docDir);
+        }
+        {
+            Path docDir = Paths.get("/Users/btnguyen/Workspace/Apps/ZooKeeper-3.3.6/docs/");
+            indexDocs(docDir);
+        }
+        {
+            Path docDir = Paths.get("/Users/btnguyen/Workspace/Apps/phpmyadmin/");
+            indexDocs(docDir);
+        }
         long t2 = System.currentTimeMillis();
+        System.out.println("NumItems: " + ITEMS.size());
         System.out.println("Finished in " + (t2 - t1) / 1000.0 + " sec");
     }
 
@@ -96,6 +111,7 @@ public class QndDemoIndex {
 
             String requestDataJson = SerializationUtils.toJsonString(requestData);
             System.out.println("Indexing " + file + " [" + requestDataJson.length() + "]");
+            ITEMS.add(file.toString());
 
             HttpResponse response = HttpRequest.post("http://localhost:9000/index/demo")
                     .body(requestDataJson).send();

@@ -3,6 +3,7 @@ package lucene.engine;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -123,10 +124,25 @@ public class StandaloneIndex extends AbstractIndex {
             lock.lock();
             try {
                 long numDocs = uncommitActions.get();
-                Logger.debug("Committing [" + numDocs + "] uncommitted action(s) for index ["
-                        + getName() + "]");
                 IndexWriter iw = getIndexWriter();
+                if (Logger.isDebugEnabled()) {
+                    Map<String, Object> stats = new HashMap<String, Object>();
+                    stats.put("docs", iw.numDocs());
+                    stats.put("del", iw.hasDeletions());
+                    stats.put("pending", iw.hasPendingMerges());
+                    stats.put("change", iw.hasUncommittedChanges());
+                    Logger.debug("[" + getName() + "] committing " + numDocs
+                            + (numDocs > 1 ? " changes: " : " change: ") + stats);
+                }
                 iw.commit();
+                if (Logger.isDebugEnabled()) {
+                    Map<String, Object> stats = new HashMap<String, Object>();
+                    stats.put("docs", iw.numDocs());
+                    stats.put("del", iw.hasDeletions());
+                    stats.put("pending", iw.hasPendingMerges());
+                    stats.put("change", iw.hasUncommittedChanges());
+                    Logger.debug("\tafter commit: " + stats);
+                }
                 uncommitActions.set(0);
             } finally {
                 lock.unlock();
@@ -153,7 +169,6 @@ public class StandaloneIndex extends AbstractIndex {
                 }
                 iw.addDocument(doc);
                 long value = uncommitActions.incrementAndGet();
-                // Logger.debug("Added document, [" + value + "] in queue.");
                 return true;
             } finally {
                 lock.unlock();
