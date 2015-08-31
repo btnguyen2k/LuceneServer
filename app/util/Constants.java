@@ -10,4 +10,6 @@ public class Constants {
     public static final String RESPONSE_FIELD_STATUS = "status";
     public static final String RESPONSE_FIELD_MESSAGE = "message";
 
+    public final static int DEFAULT_PAGE_SIZE = 10;
+
 }

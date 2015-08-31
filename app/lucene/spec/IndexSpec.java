@@ -41,6 +41,8 @@ public class IndexSpec extends BaseBo {
         IndexSpec spec = newInstance(name);
         if (spec != null) {
             spec.fields(DPathUtils.getValue(requestData, ATTR_FIELDS, Map.class));
+            spec.defaultSearchField(DPathUtils.getValue(requestData, ATTR_DEFAULT_SEARCH_FIELD,
+                    String.class));
         }
         return spec;
     }
@@ -85,6 +87,7 @@ public class IndexSpec extends BaseBo {
     }
 
     private final static String ATTR_NAME = "name";
+    private final static String ATTR_DEFAULT_SEARCH_FIELD = "default_search_field";
     private final static String ATTR_SECRET = "secret";
     private final static String ATTR_FIELDS = "fields";
 
@@ -108,7 +111,15 @@ public class IndexSpec extends BaseBo {
     public IndexSpec merge(IndexSpec spec, boolean override) {
         if (spec != null) {
             if (override) {
-                this.secret(spec.secret());
+                String newSecret = spec.secret();
+                if (!StringUtils.isBlank(newSecret)) {
+                    this.secret(newSecret);
+                }
+
+                String newDefaultSearchField = spec.defaultSearchField();
+                if (!StringUtils.isBlank(newDefaultSearchField)) {
+                    this.defaultSearchField(newDefaultSearchField);
+                }
             }
             Map<String, FieldSpec> existingFields = fields();
             Map<String, FieldSpec> newFields = spec.fields();
@@ -131,6 +142,17 @@ public class IndexSpec extends BaseBo {
 
     public IndexSpec name(String name) {
         setAttribute(ATTR_NAME, IndexUtils.normalizeName(name));
+        return this;
+    }
+
+    @JsonIgnore
+    public String defaultSearchField() {
+        return getAttribute(ATTR_DEFAULT_SEARCH_FIELD, String.class);
+    }
+
+    public IndexSpec defaultSearchField(String name) {
+        setAttribute(ATTR_DEFAULT_SEARCH_FIELD,
+                StringUtils.isBlank(name) ? null : IndexUtils.normalizeName(name));
         return this;
     }
 

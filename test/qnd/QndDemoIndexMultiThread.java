@@ -35,6 +35,7 @@ public class QndDemoIndexMultiThread {
         Map<String, Object> requestData = new HashMap<String, Object>();
         requestData.put("override", Boolean.TRUE);
         requestData.put("secret", "secret");
+        requestData.put("default_search_field", "contents");
         Map<String, Object> fields = new HashMap<String, Object>();
         requestData.put("fields", fields);
         {
@@ -53,13 +54,13 @@ public class QndDemoIndexMultiThread {
             fields.put("content", field);
         }
         {
-            HttpResponse response = HttpRequest.post("http://localhost:9000/create/demo")
+            HttpResponse response = HttpRequest.put("http://localhost:9000/demo")
                     .body(SerializationUtils.toJsonString(requestData)).send();
             System.out.println("CreateIndex: " + response.bodyText());
         }
 
         {
-            HttpResponse response = HttpRequest.post("http://localhost:9000/truncate/demo")
+            HttpResponse response = HttpRequest.post("http://localhost:9000/demo/truncate")
                     .body(SerializationUtils.toJsonString(requestData)).send();
             System.out.println("TruncateIndex: " + response.bodyText());
         }
@@ -122,7 +123,7 @@ public class QndDemoIndexMultiThread {
                     String requestDataJson = SerializationUtils.toJsonString(requestData);
                     System.out.println("Indexing " + file + " [" + requestDataJson.length() + "]");
 
-                    HttpResponse response = HttpRequest.post("http://localhost:9000/index/demo")
+                    HttpResponse response = HttpRequest.post("http://localhost:9000/demo/index")
                             .body(requestDataJson).send();
                     System.out.println(response.bodyText());
                 } catch (IOException e) {

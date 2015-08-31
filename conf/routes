@@ -4,13 +4,21 @@
 
 #GET         /                                   controllers.RestController.index()
 
-PUT         /:indexName                         controllers.RestController.createIndexPut(indexName: String)
-POST        /create/:indexName                  controllers.RestController.createIndexPost(indexName: String)
+POST        /_thrift                            controllers.ThriftController.doPost()
 
-POST        /index/:indexName                   controllers.RestController.indexDocumentPost(indexName: String)
-POST        /truncate/:indexName                controllers.RestController.truncateIndexPost(indexName: String)
+PUT         /$indexName<[a-z_]+>                controllers.RestController.createIndexPut(indexName: String)
+POST        /$indexName<[a-z_]+>/create         controllers.RestController.createIndexPost(indexName: String)
 
-POST        /thrift                             controllers.ThriftController.doPost()
+DELETE      /$indexName<[a-z_]+>/               controllers.RestController.deleteDocumentsDelete(indexName: String)
+POST        /$indexName<[a-z_]+>/delete         controllers.RestController.deleteDocumentsPost(indexName: String)
+
+PUT         /$indexName<[a-z_]+>/               controllers.RestController.indexDocumentsPut(indexName: String)
+POST        /$indexName<[a-z_]+>/index          controllers.RestController.indexDocumentsPost(indexName: String)
+
+POST        /$indexName<[a-z_]+>/truncate       controllers.RestController.truncateIndexPost(indexName: String)
+
+GET         /$indexName<[a-z_]+>/               controllers.RestController.searchDocumentsGet(indexName: String)
+POST        /$indexName<[a-z_]+>/search         controllers.RestController.searchDocumentsPost(indexName: String)
 
 # Map static resources from the /public folder to the /assets URL path
 GET         /assets/*file                       controllers.Assets.at(path="/public", file)

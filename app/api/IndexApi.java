@@ -359,4 +359,91 @@ public class IndexApi {
         }
         return false;
     }
+
+    /*----------------------------------------------------------------------*/
+    /**
+     * <pre>
+     * -= Search document(s): GET method =-
+     * Input:
+     * ?q=Lucene query to search for document(s)
+     * ?s=start offset (for pagination)
+     * ?l=limit number of returned documents
+     * ?b=bookmark returned from last search (for pagination)
+     * Output:
+     * {
+     *   "status"  : 200/400/403/500,
+     *   "message" : "successful or failed message",
+     *   "num_hits": total number of hits,
+     *   "bookmark": "bookmark of this search (for pagination)",
+     *   "docs"    : [{"doc1 field":"doc2 value",...},{"doc2 field":"doc2 value",...},...]
+     * }
+     * </pre>
+     */
+    /**
+     * <pre>
+     * -= Search document(s): POST method =-
+     * Input:
+     * {
+     *   "secret": "authkey",
+     *   "query" : "query to match document(s) for deletion", or
+     *   "terms" : {
+     *       "field1": "value1",
+     *       "field2": value2,
+     *       ...
+     *   },
+     *   "start"   : start offset (for pagination),
+     *   "limit"   : limit number of returned documents,
+     *   "bookmark": "bookmark returned from last search (for pagination)"
+     * }
+     * Output:
+     * {
+     *   "status"  : 200/400/403/500,
+     *   "message" : "successful or failed message",
+     *   "num_hits": total number of hits,
+     *   "bookmark": "bookmark of this search (for pagination)",
+     *   "docs"    : [{"doc1 field":"doc2 value",...},{"doc2 field":"doc2 value",...},...]
+     * }
+     * </pre>
+     */
+    /*----------------------------------------------------------------------*/
+
+    public final static String PARAM_SEARCH_QUERY = "query";
+    public final static String PARAM_SEARCH_START = "start";
+    public final static String PARAM_SEARCH_LIMIT = "limit";
+    public final static String PARAM_SEARCH_BOOKMARK = "bookmark";
+
+    /**
+     * API: Search documents.
+     * 
+     * @param indexName
+     * @param requestData
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    public Map<String, Object> searchDocuments(String indexName, Map<String, Object> requestData)
+            throws IndexException, IOException {
+        if (!IndexUtils.isValidName(indexName)) {
+            throw new IndexException(400, "InvalidIndexNameException: Invalid index name ["
+                    + indexName + "]");
+        }
+
+        IndexSpec spec = IndexSpec.newInstance(indexName);
+        IIndex index = indexFactory.openIndex(spec, actionQueue);
+        if (index == null) {
+            throw new IndexException(400, "Index [" + indexName + "] does not exist");
+        }
+
+        String query = DPathUtils.getValue(requestData, PARAM_SEARCH_QUERY, String.class);
+        if (!index.validateQuery(query)) {
+            throw new IndexException(400, "InvalidQueryException: Invalid query [" + query + "]");
+        }
+
+        String bookmark = DPathUtils.getValue(requestData, PARAM_SEARCH_BOOKMARK, String.class);
+        Integer start = DPathUtils.getValue(requestData, PARAM_SEARCH_START, Integer.class);
+        Integer limit = DPathUtils.getValue(requestData, PARAM_SEARCH_LIMIT, Integer.class);
+
+        return index.searchDocuments(query, bookmark, start != null ? start.intValue() : 0,
+                limit != null ? limit.intValue() : 0);
+    }
 }

@@ -106,6 +106,22 @@ public interface IIndex {
     public int indexDocuments(Map<String, Object>[] docs) throws IndexException, IOException;
 
     /**
+     * Searches for documents.
+     * 
+     * @param query
+     *            Lucene query to search for documents
+     * @param bookmark
+     *            bookmark returned from last search (for pagination)
+     * @param start
+     * @param limit
+     * @return
+     * @throws IndexException
+     * @throws IOException
+     */
+    public Map<String, Object> searchDocuments(String query, String bookmark, int start, int limit)
+            throws IndexException, IOException;
+
+    /**
      * Truncates this index.
      * 
      * <p>

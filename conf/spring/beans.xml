@@ -34,9 +34,9 @@
 		    <!-- 
 		     * Queue to buffer index's actions for async-executions.
 		     -->
-			<bean class="lucene.action.InMemoryActionQueue" init-method="init"
+			<bean class="lucene.queue.InMemoryActionQueue" init-method="init"
 				destroy-method="destroy">
-				<property name="maxItems" value="1024" />
+				<property name="maxItems" value="10240" />
 			</bean>
 		</property>
 	</bean>

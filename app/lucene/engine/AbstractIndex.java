@@ -1,7 +1,10 @@
 package lucene.engine;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
@@ -37,11 +40,15 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 
 import play.Logger;
+import util.Constants;
 import util.IndexException;
+import util.IndexUtils;
 
 /**
  * Abstract implementation of {@link IIndex}.
@@ -290,8 +297,14 @@ public abstract class AbstractIndex implements IIndex {
         return isEmpty ? null : doc;
     }
 
+    /**
+     * Parses a Lucene query.
+     * 
+     * @param query
+     * @return
+     */
     protected Query parseQuery(String query) {
-        QueryParser queryParser = new QueryParser(null, getAnalyser());
+        QueryParser queryParser = new QueryParser(spec.defaultSearchField(), getAnalyser());
         try {
             return queryParser.parse(query);
         } catch (ParseException e) {
@@ -467,7 +480,7 @@ public abstract class AbstractIndex implements IIndex {
     @Override
     public boolean validateQuery(String query) throws IndexException {
         try {
-            QueryParser queryParser = new QueryParser(null, getAnalyser());
+            QueryParser queryParser = new QueryParser(spec.defaultSearchField(), getAnalyser());
             return queryParser.parse(query) != null;
         } catch (ParseException e) {
             return false;
@@ -548,6 +561,50 @@ public abstract class AbstractIndex implements IIndex {
         action.deleteMethod(DeleteAction.DELETE_METHOD_TERM).term(terms);
         IActionQueue actionQueue = getActionQueue();
         return actionQueue != null ? actionQueue.queue(action) : performAction(action);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Object> searchDocuments(String _query, String bookmark, int start, int limit)
+            throws IndexException, IOException {
+        Query query = parseQuery(_query);
+        if (query == null) {
+            throw new IndexException(400, "Cannot parse query [" + _query + "]");
+        }
+        if (start < 0) {
+            start = 0;
+        }
+        if (limit < 1) {
+            limit = Constants.DEFAULT_PAGE_SIZE;
+        }
+        final Map<String, Object> result = new HashMap<String, Object>();
+        final IndexSearcher is = getIndexSearcher();
+
+        int numTopDocs = start + limit;
+        ScoreDoc bmScoreDoc = IndexUtils.derializeScoreDoc(bookmark);
+        TopDocs topDocs = bmScoreDoc != null ? is.searchAfter(bmScoreDoc, query, numTopDocs) : is
+                .search(query, numTopDocs);
+        result.put("num_hits", topDocs.totalHits);
+
+        List<Map<String, Object>> docList = new ArrayList<Map<String, Object>>();
+        result.put("docs", docList);
+        for (int i = start; i < numTopDocs; i++) {
+            if (i < topDocs.scoreDocs.length) {
+                ScoreDoc scoreDoc = topDocs.scoreDocs[i];
+                bookmark = IndexUtils.serializeScoreDoc(scoreDoc);
+                result.put("bookmark", bookmark);
+                Map<String, Object> docMap = IndexUtils.docToMap(is.doc(scoreDoc.doc));
+                if (docMap != null) {
+                    docList.add(docMap);
+                }
+            } else {
+                break;
+            }
+        }
+
+        return result;
     }
 
     /**
